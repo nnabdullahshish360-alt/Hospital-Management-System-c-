@@ -1,0 +1,383 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define MP 100
+#define MD 5
+
+struct Patient {
+    int id;
+    char name[50];
+    int age;
+    char disease[50];
+};
+
+struct Doctor {
+    int id;
+    char name[50];
+    char spcz[30];
+    int avlS;
+};
+
+struct Patient p1[MP];
+int patientCount = 0;
+
+struct Doctor d1[MD];
+int doctorCount = 0;
+
+int staffAuthenticated = 0; // Flag for password authentication
+
+void addPatient();
+void viewPatients();
+void searchPatientById();
+void searchPatientByName();
+void bookAppointment();
+void cancelAppointment();
+void viewDoctors();
+void menu();
+void loadDoctorsFromFile();
+void showTopAvailableDoctor();
+void listPatientsByDisease();
+void meetAppointment(); 
+int authenticateStaff(); 
+
+int main() {
+    loadDoctorsFromFile();
+    menu();
+    return 0;
+}
+
+void loadDoctorsFromFile() {
+    FILE *fp = fopen("doctors.txt", "r");
+    if (fp == NULL) {
+        printf("Error: doctors.txt file not found!\n");
+        exit(1);
+    }
+
+    while (doctorCount < MD && fscanf(fp, "%d %[^\n] %s %d",
+           &d1[doctorCount].id,
+           d1[doctorCount].name,
+           d1[doctorCount].spcz,
+           &d1[doctorCount].avlS) == 4) {
+        doctorCount++;
+    }
+
+    fclose(fp);
+}
+
+void menu() {
+    int c;
+    while (1) {
+        printf("\n===== Healthcare Management System =====\n");
+        printf("1. Add Patient\n");
+        printf("2. View All Patients\n");
+        printf("3. Search Patient by ID\n");
+        printf("4. Search Patient by Name\n");
+        printf("5. View Doctor List\n");
+        printf("6. Book Appointment\n");
+        printf("7. Cancel Appointment\n");
+        printf("8. Show Doctor with Most Available Slots\n");
+        printf("9. List Patients by Disease\n");
+        printf("10. Meet Appointment and Log Treatment\n");
+        printf("0. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &c);
+        getchar();
+
+        switch (c) {
+            case 1: addPatient(); break;
+            case 2: viewPatients(); break;
+            case 3: searchPatientById(); break;
+            case 4: searchPatientByName(); break;
+            case 5: viewDoctors(); break;
+            case 6: bookAppointment(); break;
+            case 7: cancelAppointment(); break;
+            case 8: showTopAvailableDoctor(); break;
+            case 9: listPatientsByDisease(); break;
+            case 10: meetAppointment(); break;
+            case 0: printf("Exiting system. Goodbye!\n"); return;
+            default: printf("Invalid choice! Try again.\n");
+        }
+    }
+}
+
+void addPatient() {
+    if (patientCount >= MP) {
+        printf("Patient list is full!\n");
+        return;
+    }
+
+    int newID;
+    printf("Enter Patient ID: ");
+    scanf("%d", &newID);
+    getchar();
+
+    for (int i = 0; i < patientCount; i++) {
+        if (p1[i].id == newID) {
+            printf("Error: ID already taken! Please use a different ID.\n");
+            return;
+        }
+    }
+
+    p1[patientCount].id = newID;
+
+    printf("Enter Name: ");
+    fgets(p1[patientCount].name, 50, stdin);
+    p1[patientCount].name[strcspn(p1[patientCount].name, "\n")] = '\0';
+    printf("Enter Age: ");
+    scanf("%d", &p1[patientCount].age);
+    getchar();
+    printf("Enter Disease: ");
+    fgets(p1[patientCount].disease, 50, stdin);
+    p1[patientCount].disease[strcspn(p1[patientCount].disease, "\n")] = '\0';
+
+    patientCount++;
+    printf("Patient added successfully!\n");
+}
+
+void viewPatients() {
+    if (patientCount == 0) {
+        printf("No patients added yet.\n");
+        return;
+    }
+
+    printf("\n--- Patient List ---\n");
+    for (int i = 0; i < patientCount; i++) {
+        printf("ID: %d | Name: %s | Age: %d | Disease: %s\n",
+               p1[i].id,
+               p1[i].name,
+               p1[i].age,
+               p1[i].disease);
+    }
+}
+
+void searchPatientById() {
+    int id;
+    printf("Enter Patient ID to search: ");
+    scanf("%d", &id);
+    int found = 0;
+
+    for (int i = 0; i < patientCount; i++) {
+        if (p1[i].id == id) {
+            printf("\nPatient Found:\n");
+            printf("Name: %s | Age: %d | Disease: %s\n",
+                   p1[i].name,
+                   p1[i].age,
+                   p1[i].disease);
+            found = 1;
+            break;
+        }
+    }
+    if (!found)
+        printf("Patient not found.\n");
+}
+
+void searchPatientByName() {
+    char searchName[50];
+    printf("Enter Patient Name to search: ");
+    fgets(searchName, 50, stdin);
+    searchName[strcspn(searchName, "\n")] = '\0';
+
+    int found = 0;
+    for (int i = 0; i < patientCount; i++) {
+        if (strcmp(p1[i].name, searchName) == 0) {
+            printf("\nPatient Found:\n");
+            printf("ID: %d | Age: %d | Disease: %s\n",
+                   p1[i].id,
+                   p1[i].age,
+                   p1[i].disease);
+            found = 1;
+            break;
+        }
+    }
+    if (!found)
+        printf("Patient not found.\n");
+}
+
+void viewDoctors() {
+    printf("\n--- Available Doctors ---\n");
+    for (int i = 0; i < doctorCount; i++) {
+        printf("ID: %d | Name: %s | Specialization: %s | Available Slots: %d\n",
+               d1[i].id,
+               d1[i].name,
+               d1[i].spcz,
+               d1[i].avlS);
+    }
+}
+
+void bookAppointment() {
+    int pid, did;
+    printf("Enter Patient ID: ");
+    scanf("%d", &pid);
+
+    int found = 0;
+    for (int i = 0; i < patientCount; i++) {
+        if (p1[i].id == pid) {
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("Patient ID not found. Please add the patient first.\n");
+        return;
+    }
+
+    viewDoctors();
+    printf("Enter Doctor ID to book: ");
+    scanf("%d", &did);
+
+    for (int i = 0; i < doctorCount; i++) {
+        if (d1[i].id == did) {
+            if (d1[i].avlS > 0) {
+                d1[i].avlS--;
+                printf("Appointment booked with Dr. %s!\n", d1[i].name);
+            } else {
+                printf("No slots available for Dr. %s.\n", d1[i].name);
+            }
+            return;
+        }
+    }
+
+    printf("Invalid Doctor ID.\n");
+}
+
+void cancelAppointment() {
+    int pid, did;
+    
+    // Step 1: Show all patients
+    viewPatients();
+    
+    if (patientCount == 0) return; // No patients to cancel
+    
+    // Step 2: Ask which patient wants to cancel
+    printf("Enter Patient ID to cancel appointment for: ");
+    scanf("%d", &pid);
+
+    // Step 3: Show doctors and let staff choose which appointment to cancel
+    viewDoctors();
+    printf("Enter Doctor ID to cancel appointment: ");
+    scanf("%d", &did);
+
+    for (int i = 0; i < doctorCount; i++) {
+        if (d1[i].id == did) {
+            d1[i].avlS++;
+            printf("Appointment for Patient ID %d with Dr. %s canceled.\n", pid, d1[i].name);
+            return;
+        }
+    }
+
+    printf("Invalid Doctor ID.\n");
+}
+
+void showTopAvailableDoctor() {
+    if (doctorCount == 0) {
+        printf("No doctor data available.\n");
+        return;
+    }
+
+    int max = d1[0].avlS;
+    int index = 0;
+    for (int i = 1; i < doctorCount; i++) {
+        if (d1[i].avlS > max) {
+            max = d1[i].avlS;
+            index = i;
+        }
+    }
+
+    printf("\nDoctor with Most Available Slots:\n");
+    printf("ID: %d | Name: %s | Specialization: %s | Slots: %d\n",
+           d1[index].id, d1[index].name, d1[index].spcz, d1[index].avlS);
+}
+
+void listPatientsByDisease() {
+    char searchDisease[50];
+    printf("Enter Disease to search patients for: ");
+    fgets(searchDisease, 50, stdin);
+    searchDisease[strcspn(searchDisease, "\n")] = '\0';
+
+    int found = 0;
+    for (int i = 0; i < patientCount; i++) {
+        if (strcasecmp(p1[i].disease, searchDisease) == 0) {
+            if (!found) {
+                printf("\nPatients with %s:\n", searchDisease);
+            }
+            printf("ID: %d | Name: %s | Age: %d\n",
+                   p1[i].id, p1[i].name, p1[i].age);
+            found = 1;
+        }
+    }
+
+    if (!found)
+        printf("No patients found with disease: %s\n", searchDisease);
+}
+
+int authenticateStaff() {
+    if (staffAuthenticated) return 1;
+    char password[20];
+    printf("Enter Staff Password: ");
+    fgets(password, 20, stdin);
+    password[strcspn(password, "\n")] = '\0';
+
+    if (strcmp(password, "admin123") == 0) {
+        staffAuthenticated = 1;
+        return 1;
+    } else {
+        printf("Wrong password.\n");
+        return 0;
+    }
+}
+
+void meetAppointment() {
+    if (!authenticateStaff()) return;
+
+    int pid, did;
+    printf("Enter Patient ID: ");
+    scanf("%d", &pid);
+    getchar();
+
+    printf("Enter Doctor ID: ");
+    scanf("%d", &did);
+    getchar();
+
+    char treatment[100];
+    int days;
+
+    printf("Enter Treatment Advice: ");
+    fgets(treatment, 100, stdin);
+    treatment[strcspn(treatment, "\n")] = '\0';
+
+    printf("How many days holding this fever: ");
+    scanf("%d", &days);
+    getchar();
+
+    char *pname = NULL, *dname = NULL;
+    for (int i = 0; i < patientCount; i++) {
+        if (p1[i].id == pid) {
+            pname = p1[i].name;
+            break;
+        }
+    }
+    for (int i = 0; i < doctorCount; i++) {
+        if (d1[i].id == did) {
+            dname = d1[i].name;
+            break;
+        }
+    }
+
+    if (pname == NULL || dname == NULL) {
+        printf("Invalid patient or doctor ID.\n");
+        return;
+    }
+
+    FILE *fp = fopen("patient_details.txt", "a");
+    if (fp == NULL) {
+        printf("Error opening file.\n");
+        return;
+    }
+
+    fprintf(fp, "ID: %d | Name: %s | Doctor: %s | Treatment: %s | Days: %d\n",
+            pid, pname, dname, treatment, days);
+    fclose(fp);
+    printf("Treatment details saved successfully!\n");
+}
